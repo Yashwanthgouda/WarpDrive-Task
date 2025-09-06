@@ -1,0 +1,446 @@
+CAMPUS EVENT MANAGEMENT PLATFORM
+DESIGN DOCUMENT
+
+Version: 1.0
+Date: December 2024
+Author: Development Team
+
+TABLE OF CONTENTS
+
+1. EXECUTIVE SUMMARY
+2. SYSTEM OVERVIEW
+3. REQUIREMENTS ANALYSIS
+4. SYSTEM ARCHITECTURE
+5. DATABASE DESIGN
+6. API DESIGN
+7. USER INTERFACE DESIGN
+8. SECURITY CONSIDERATIONS
+9. PERFORMANCE REQUIREMENTS
+10. TESTING STRATEGY
+11. DEPLOYMENT PLAN
+12. MAINTENANCE AND SUPPORT
+
+1. EXECUTIVE SUMMARY
+
+The Campus Event Management Platform is a comprehensive web-based solution designed to streamline event management across multiple educational institutions. The system consists of two main components: an Admin Portal for college staff and a Student Portal for student interactions.
+
+Key Features:
+• Multi-college event management
+• Student registration and attendance tracking
+• Real-time feedback collection
+• Comprehensive reporting and analytics
+• Responsive web design
+• RESTful API architecture
+
+2. SYSTEM OVERVIEW
+
+2.1 Purpose
+The platform enables colleges to create, manage, and track campus events while providing students with an intuitive interface to discover, register for, and provide feedback on events.
+
+2.2 Scope
+• Event creation and management
+• Student registration system
+• Attendance tracking
+• Feedback collection (1-5 rating scale)
+• Multi-college data isolation
+• Real-time reporting and analytics
+
+2.3 Target Users
+• College Administrators
+• Event Organizers
+• Students
+• System Administrators
+
+3. REQUIREMENTS ANALYSIS
+
+3.1 Functional Requirements
+
+3.1.1 Admin Portal
+• Create, edit, and delete events
+• Manage student registrations
+• Mark attendance for events
+• View comprehensive reports
+• Manage college and student data
+• Generate analytics and insights
+
+3.1.2 Student Portal
+• Browse available events
+• Register for events
+• View personal event history
+• Submit feedback and ratings
+• Track attendance status
+• View event details and schedules
+
+3.1.3 System Requirements
+• Multi-tenant architecture for colleges
+• Data isolation between institutions
+• Real-time data synchronization
+• Mobile-responsive design
+• Cross-browser compatibility
+
+3.2 Non-Functional Requirements
+
+3.2.1 Performance
+• Page load time: < 3 seconds
+• API response time: < 500ms
+• Support for 50 colleges, 500 students per college
+• Handle 20 events per semester per college
+
+3.2.2 Security
+• Data encryption in transit and at rest
+• User authentication and authorization
+• Input validation and sanitization
+• SQL injection prevention
+• XSS protection
+
+3.2.3 Usability
+• Intuitive user interface
+• Mobile-responsive design
+• Accessibility compliance (WCAG 2.1)
+• Multi-language support capability
+
+4. SYSTEM ARCHITECTURE
+
+4.1 High-Level Architecture
+
+The system follows a three-tier architecture:
+
+Presentation Layer (Frontend)
+• HTML5, CSS3, JavaScript
+• Bootstrap 5 for responsive design
+• Font Awesome for icons
+• Custom CSS with CSS variables
+
+Application Layer (Backend)
+• Node.js runtime environment
+• Express.js web framework
+• RESTful API design
+• Middleware for authentication and validation
+
+Data Layer (Database)
+• SQLite for development
+• PostgreSQL/MySQL for production
+• Database migrations and seeding
+• Data backup and recovery
+
+4.2 Technology Stack
+
+Frontend Technologies:
+• HTML5
+• CSS3 with CSS Variables
+• JavaScript (ES6+)
+• Bootstrap 5.1.3
+• Font Awesome 6.0.0
+
+Backend Technologies:
+• Node.js
+• Express.js
+• SQLite3
+• CORS middleware
+• Body-parser middleware
+
+Development Tools:
+• npm for package management
+• Git for version control
+• VS Code for development
+
+5. DATABASE DESIGN
+
+5.1 Entity Relationship Diagram
+
+[ER Diagram would be inserted here]
+
+5.2 Database Schema
+
+5.2.1 Colleges Table
+CREATE TABLE Colleges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(255) NOT NULL,
+    location VARCHAR(255),
+    contact_email VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+5.2.2 Students Table
+CREATE TABLE Students (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    college_id INTEGER NOT NULL,
+    student_id VARCHAR(50) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (college_id) REFERENCES Colleges(id),
+    UNIQUE(college_id, student_id)
+);
+
+5.2.3 Events Table
+CREATE TABLE Events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    college_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    event_type VARCHAR(50) NOT NULL,
+    start_date DATETIME NOT NULL,
+    end_date DATETIME NOT NULL,
+    location VARCHAR(255),
+    max_capacity INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (college_id) REFERENCES Colleges(id)
+);
+
+5.2.4 Registrations Table
+CREATE TABLE Registrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    student_id INTEGER NOT NULL,
+    status VARCHAR(20) DEFAULT 'registered',
+    registered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES Events(id),
+    FOREIGN KEY (student_id) REFERENCES Students(id),
+    UNIQUE(event_id, student_id)
+);
+
+5.2.5 Attendance Table
+CREATE TABLE Attendance (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    student_id INTEGER NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    checked_in_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES Events(id),
+    FOREIGN KEY (student_id) REFERENCES Students(id),
+    UNIQUE(event_id, student_id)
+);
+
+5.2.6 Feedback Table
+CREATE TABLE Feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    student_id INTEGER NOT NULL,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES Events(id),
+    FOREIGN KEY (student_id) REFERENCES Students(id),
+    UNIQUE(event_id, student_id)
+);
+
+5.3 Data Relationships
+
+• One-to-Many: College → Students
+• One-to-Many: College → Events
+• Many-to-Many: Events ↔ Students (via Registrations)
+• One-to-Many: Event → Attendance Records
+• One-to-Many: Event → Feedback Records
+
+6. API DESIGN
+
+6.1 RESTful API Endpoints
+
+6.1.1 Events API
+GET /api/events - Get all events
+GET /api/events/:id - Get specific event
+POST /api/events - Create new event
+PUT /api/events/:id - Update event
+DELETE /api/events/:id - Delete event
+
+6.1.2 Students API
+GET /api/students - Get all students
+GET /api/students/:id - Get specific student
+POST /api/students - Create new student
+PUT /api/students/:id - Update student
+DELETE /api/students/:id - Delete student
+
+6.1.3 Registrations API
+GET /api/registrations - Get all registrations
+POST /api/registrations - Register student for event
+PUT /api/registrations/:id - Update registration status
+DELETE /api/registrations/:id - Cancel registration
+
+6.1.4 Attendance API
+GET /api/attendance - Get all attendance records
+POST /api/attendance - Mark attendance
+PUT /api/attendance/:id - Update attendance status
+
+6.1.5 Feedback API
+GET /api/feedback - Get all feedback
+POST /api/feedback - Submit feedback
+PUT /api/feedback/:id - Update feedback
+
+6.1.6 Reports API
+GET /api/reports/event-popularity - Event popularity report
+GET /api/reports/student-participation - Student participation report
+GET /api/reports/attendance-summary - Attendance summary
+GET /api/reports/feedback-summary - Feedback summary
+GET /api/reports/top-active-students - Top active students
+GET /api/reports/event-type-analysis - Event type analysis
+
+6.2 API Response Format
+
+Standard Response Format:
+{
+    "success": true,
+    "data": { ... },
+    "message": "Operation successful"
+}
+
+Error Response Format:
+{
+    "success": false,
+    "error": "Error message",
+    "code": "ERROR_CODE"
+}
+
+7. USER INTERFACE DESIGN
+
+7.1 Design Principles
+
+• User-Centered Design
+• Mobile-First Approach
+• Accessibility Compliance
+• Consistent Visual Language
+• Intuitive Navigation
+
+7.2 Color Scheme
+
+Primary Colors:
+• Primary: #ec4899 (Pink)
+• Secondary: #f97316 (Orange)
+• Accent: #06b6d4 (Cyan)
+• Success: #10b981 (Green)
+• Warning: #f59e0b (Amber)
+• Danger: #ef4444 (Red)
+
+7.3 Typography
+
+• Font Family: Inter, -apple-system, BlinkMacSystemFont, sans-serif
+• Headings: 700 weight
+• Body Text: 400 weight
+• Small Text: 500 weight
+
+7.4 Component Design
+
+7.4.1 Cards
+• Rounded corners (12px)
+• Subtle shadows
+• Hover effects
+• Gradient backgrounds
+
+7.4.2 Buttons
+• Rounded corners (12px)
+• Gradient backgrounds
+• Hover animations
+• Icon integration
+
+7.4.3 Forms
+• Clean input fields
+• Validation feedback
+• Responsive layout
+• Accessibility features
+
+8. SECURITY CONSIDERATIONS
+
+8.1 Authentication
+• Session-based authentication
+• Password hashing (bcrypt)
+• Input validation
+• CSRF protection
+
+8.2 Data Protection
+• SQL injection prevention
+• XSS protection
+• Data encryption
+• Secure headers
+
+8.3 Access Control
+• Role-based permissions
+• Data isolation between colleges
+• API rate limiting
+• Input sanitization
+
+9. PERFORMANCE REQUIREMENTS
+
+9.1 Response Times
+• Page load: < 3 seconds
+• API response: < 500ms
+• Database queries: < 100ms
+
+9.2 Scalability
+• Support 50 colleges
+• 500 students per college
+• 20 events per semester
+• Concurrent user support
+
+9.3 Optimization
+• Database indexing
+• Caching strategies
+• Image optimization
+• Code minification
+
+10. TESTING STRATEGY
+
+10.1 Unit Testing
+• Individual function testing
+• API endpoint testing
+• Database operation testing
+
+10.2 Integration Testing
+• API integration testing
+• Database integration testing
+• Frontend-backend integration
+
+10.3 User Acceptance Testing
+• Admin portal testing
+• Student portal testing
+• Cross-browser testing
+• Mobile device testing
+
+11. DEPLOYMENT PLAN
+
+11.1 Development Environment
+• Local development setup
+• Database seeding
+• Testing environment
+
+11.2 Production Environment
+• Server configuration
+• Database setup
+• SSL certificate installation
+• Domain configuration
+
+11.3 Deployment Process
+• Code deployment
+• Database migration
+• Configuration updates
+• Health checks
+
+12. MAINTENANCE AND SUPPORT
+
+12.1 Monitoring
+• Application performance monitoring
+• Error tracking
+• User analytics
+• System health checks
+
+12.2 Updates
+• Regular security updates
+• Feature enhancements
+• Bug fixes
+• Performance optimizations
+
+12.3 Support
+• User documentation
+• Technical support
+• Training materials
+• FAQ section
+
+APPENDICES
+
+Appendix A: API Documentation
+Appendix B: Database Schema Details
+Appendix C: UI/UX Mockups
+Appendix D: Security Checklist
+Appendix E: Performance Benchmarks
+
+END OF DOCUMENT
